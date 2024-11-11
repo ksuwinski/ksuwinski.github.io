@@ -20,7 +20,6 @@ export class SonarAudioGraph {
     const fc = this.sonarParameters.fc;
     const bandwidth = this.sonarParameters.bandwidth;
 
-    console.log("creating audiocontext")
     this.audioContext = new AudioContext({
       latencyHint: "playback",
       sampleRate: 44100,
@@ -32,7 +31,6 @@ export class SonarAudioGraph {
     }
     const normalizedCarrier = fc / fs;
 
-    console.log("create audio output node")
     const chirp = generateChirp(fs, impulseLength, fc, bandwidth);
     this.chirpSource = initAudioOutput(this.audioContext, chirp);
 
@@ -49,7 +47,6 @@ export class SonarAudioGraph {
     const clutter_alpha = impulseLength / (fs * tau);
     console.log(clutter_alpha);
 
-    console.log("init worklet")
     this.sonarProcessor = await initSonarWorklet(this.audioContext, {
       chirp,
       normalizedCarrier,
@@ -63,14 +60,12 @@ export class SonarAudioGraph {
     this.micSource = await initAudioInput(this.audioContext);
     this.micSource.connect(this.sonarProcessor);
 
-    console.log("done")
     this.initialized = true;
   }
   async start() {
     if (this.initialized) {
       await this.audioContext.resume();
     } else {
-      console.log("calling initialize")
       await this.#initialize();
     }
   }
@@ -118,9 +113,9 @@ function initAudioOutput(audioContext, chirp) {
 
 async function initSonarWorklet(audioContext, params) {
   const response = await fetch(
-    "/pkg/sonar_bg.wasm?idk=" + Math.round(Math.random() * 1000000),
+    "/pkg/sonar_bg.wasm"
+    // "/pkg/sonar_bg.wasm?idk=" + Math.round(Math.random() * 1000000),
   );
-  console.log(response);
   const wasm_blob = await response.arrayBuffer();
 
   await audioContext.audioWorklet.addModule("/javascript/sonar-processor.js");
