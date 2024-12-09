@@ -7,6 +7,7 @@ export class SonarAudioGraph {
   micSource;
   onWorkletMessage;
   sonarParameters;
+  sampleRate;
 
   constructor(sonarParameters) {
     this.initialized = false;
@@ -26,6 +27,7 @@ export class SonarAudioGraph {
     });
 
     const fs = this.audioContext.sampleRate;
+    console.log("audiocontext fs", fs);
     if (fs != 44100) {
       console.error("wrong sample rate");
     }
@@ -92,6 +94,8 @@ async function initAudioInput(audioContext) {
   const audioTrack = stream.getAudioTracks()[0];
   console.log("audio input settings:", audioTrack.getSettings());
 
+  console.log("audio track constraints", audioTrack.getConstraints());
+  console.log("audio track capabilities", audioTrack.getCapabilities());
   const micSource = audioContext.createMediaStreamSource(stream);
   return micSource;
 }
@@ -113,12 +117,13 @@ function initAudioOutput(audioContext, chirp) {
 
 async function initSonarWorklet(audioContext, params) {
   const response = await fetch(
-    "/pkg/sonar_bg.wasm"
-    // "/pkg/sonar_bg.wasm?idk=" + Math.round(Math.random() * 1000000),
+    "pkg/sonar_bg.wasm"
+    // "/pkg/sonar_bg.wasm?dontcache=" + Math.round(Math.random() * 1000000),
   );
+  console.log(response);
   const wasm_blob = await response.arrayBuffer();
 
-  await audioContext.audioWorklet.addModule("/javascript/sonar-processor.js");
+  await audioContext.audioWorklet.addModule("javascript/sonar-processor.js");
   const sonarProcessor = new AudioWorkletNode(audioContext, "sonar-processor", {
     numberOfInputs: 1,
     numberOfOutputs: 0,

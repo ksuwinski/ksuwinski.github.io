@@ -1,0 +1,356 @@
+<!doctype html>
+<html>
+    <head>
+        <meta content="text/html;charset=utf-8" http-equiv="Content-Type" />
+        <style>
+        body {
+            font-family: Arial, Helvetica, sans-serif;
+        }
+        .page-title {
+            text-align: center;
+        }
+        .info-section h1 {
+            font-size: large;
+        }
+        #rangedoppler-canvas {
+            background-color: black;
+            float: right;
+            grid-column: 3;
+        }
+        .rd-plot-container {
+            display: grid;
+            grid-template-columns: 20px 40px auto;
+            grid-template-rows: auto 20px;
+            margin-bottom: 10px;
+            margin-right: 60px;
+        }
+        .settings-and-info {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-between;
+        }
+        fieldset {
+            width: fit-content;
+        }
+        .setting-value, .info-value {
+            font-weight: bold;
+        }
+        .velocity-axis-label, .range-axis-label {
+            font-size: large;
+        }
+        .info-multiple-values{
+            margin-left: 2em;
+        }
+        .velocity-axis-label {
+            writing-mode: vertical-lr;
+            margin-right: 2px;
+            text-align: center;
+            transform: rotate(180deg);
+        }
+        #range-axis-ticks{
+            grid-column: 3;
+            position: relative;
+        }
+        #velocity-axis-ticks{
+            position: relative;
+        }
+        #range-axis-ticks div, #velocity-axis-ticks div {
+            position: absolute;
+        }
+        .range-axis-label{
+            text-align: center;
+            grid-column: 3;
+            margin-top: 2px;
+        }
+        .controls {
+            display: flex;
+            flex-direction: row;
+            margin-bottom: 10px;
+        }
+        #button-start {
+            margin-right: 20px;
+        }
+        .range-setting label {
+            display: block;
+        }
+        .checkbox-setting {
+            display: flex;
+            align-items: center;
+        }
+        .controls, .range-setting, .checkbox-setting, fieldset{
+            margin-bottom: 10px;
+        }
+        input[type=range] {
+            width:200px;
+        }
+        .info-item {
+            margin-bottom: 5px;
+        }
+        .hoverable {
+            border-bottom: dotted 1px gray;
+        }
+        figure {
+            margin:auto;
+            width: fit-content;
+            text-align: center;
+        }
+        .description, .settings-and-info {
+            margin: 0 60px;
+        }
+        .formula {text-align: center;}
+        .input-level-percentage-container {
+            width: 3em;
+            display: inline-block;
+            text-align: left;
+        }
+        </style>
+    </head>
+    </div>
+    <body>
+        <!-- <div
+            id="plot-container"
+            style="position: relative; height: 40vh; width: 80vw"
+        >
+            <canvas id="myChart"></canvas>
+        </div> -->
+        <h1 class="page-title">Pulse-doppler sonar demo</h1>
+        <div class="rd-plot-container">
+            <div class="velocity-axis-label">bistatic velocity</div>
+            <div id="velocity-axis-ticks"></div>
+            <canvas
+                id="rangedoppler-canvas"
+                width="128"
+                height="20"
+                style="width: 100%; height:50vh; image-rendering: pixelated;"
+                <!-- style="width: 640px; height: 200px" -->
+            ></canvas>
+            <div id="range-axis-ticks"></div>
+            <div class="range-axis-label">bistatic range</div>
+        </div>
+
+        <div class="settings-and-info">
+            <div class="settings">
+                <div class="controls">
+                    <button id="button-start">start</button>
+                    <div>peak input level:
+                        <meter id="input-level-meter" min="0" max="100" low="40" high="90"></meter>
+                        <span class="input-level-percentage-container">
+                            <span id="input-level-label">0</span>
+                            %
+                        </span>
+                    </div>
+                </div>
+
+                <div class="range-setting">
+                    <label for="center-freq-range">center frequency: <span class="setting-value" id="center-freq-range-label"></span> Hz</label>
+                    <input id="center-freq-range" type="range" min="1000" max="22000" step="500" value="18000">
+                </div>
+
+                <div class="range-setting">
+                    <label for="bandwidth-range">
+                        <span class="hoverable" title="frequency range swept in one chirp">nominal bandwidth</span>:
+                        <span class="setting-value" id="bandwidth-range-label"></span>
+                        Hz
+                    </label>
+                    <input id="bandwidth-range" type="range" min="-8" max="8" step="1" value="0">
+                </div>
+
+                <div class="range-setting">
+                    <label for="chirp-length-range">
+                        chirp length:
+                        <span class="setting-value" id="chirp-length-range-label"></span>
+                        samples
+                        (<span class="setting-value" id="chirp-duration-range-label"></span> ms)
+                    </label>
+                    <input id="chirp-length-range" type="range" min="-8" max="10" step="1" value="0">
+                </div>
+
+                <div class="range-setting">
+                    <label for="n-slow-range">chirps per <span class="hoverable" title="coherent processing interval">CPI</span>: <span class="setting-value" id="n-slow-range-label"></span></label>
+                    <input id="n-slow-range" type="range" min="1" max="201" step="2" value="20">
+                </div>
+            </div>
+            <form class="settings" id="settings-form">
+                <fieldset class="clutter-filter-settings">
+                  <legend
+                      class="hoverable"
+                      title="Clutter filter removes stationary echoes from walls and, more importantly, the direct-path signal between the speaker and the microphone.">
+                      Clutter filtering
+                  </legend>
+
+                  <div>
+                    <input id="clutterfilter-option-none" type="radio" name="clutterfilter" value="none" />
+                    <label for="clutterfilter-option-none">None</label>
+                  </div>
+                  <div>
+                    <input id="clutterfilter-option-twopulse" type="radio" name="clutterfilter" value="two-pulse" />
+                    <label for="clutterfilter-option-twopulse">Two-pulse canceller</label>
+                  </div>
+                  <div>
+                    <input id="clutterfilter-option-slow" type="radio" name="clutterfilter" value="slow" checked />
+                    <label for="clutterfilter-option-slow" class="hoverable" title="create a coherent clutter map using exponential moving average filter, and subtract the map from each impulse">Subtract clutter map</label>
+                  </div>
+                  <div>
+                    <input id="clutterfilter-option-removezero" type="radio" name="clutterfilter" value="remove-zero" />
+                    <label for="clutterfilter-option-removezero">Remove the v=0 slice</label>
+                  </div>
+                </fieldset>
+                <div class="checkbox-setting">
+                    <label
+                        for="offset-checkbox"
+                        class="hoverable"
+                        title="Shift the range axis so that the strongest echo (corresponding to the direct speaker-mic path) is at R=0">
+                            compensate audio delay:
+                    </label>
+                    <input id="offset-checkbox" type="checkbox" checked>
+                </div>
+                <div class="checkbox-setting">
+                    <label
+                        for="window-checkbox"
+                        class="hoverable"
+                        title="Applies Hann window before taking the slow-time FFT. (fast-time data is always windowed)">
+                            apply window before FFT:
+                    </label>
+                    <input id="window-checkbox" type="checkbox" checked>
+                </div>
+            </form>
+            <!-- <div class="info-container"> -->
+                <div class="info-section">
+                    <h1>Basic radar parameters</h1>
+                    <div class="info-item">
+                        <span class="hoverable" title="width of a single cell in the range-doppler map">range resolution</span>:
+                        <span class="info-value" id="range-resolution-label"></span>
+                        cm
+                    </div>
+                    <div class="info-item">
+                        <span class="hoverable" title="height of a single cell in the range-doppler map">velocity resolution</span>:
+                        <span class="info-value" id="velocity-resolution-label"></span>
+                        cm/s
+                    </div>
+                    <div class="info-item">
+                        <span class="hoverable" title="maximum value of bistatic range; bigger ranges loop back to zero">range ambiguity</span>:
+                        <span class="info-value" id="range-ambiguity-label"></span>
+                        m
+                    </div>
+                    <div class="info-item">
+                        <span class="hoverable"
+                              title="maximum value of velocity; greater values cause aliasing (looping to the opposite edge of range-doppler map)"
+                        > velocity ambiguity
+                        </span>:
+                        <span class="info-value" id="velocity-ambiguity-label"></span>
+                        m/s
+                    </div>
+                    <div class="info-item">
+                        <!-- <span class="hoverable" title="the frequency at which consecutive chirps are played">pulse repetition frequency</span>: -->
+                        pulse repetition frequency
+                        <span class="info-value" id="prf-label"></span>
+                        Hz
+                    </div>
+                    <div class="info-item">
+                        <span class="hoverable" title="total duration of the input processed to obtain one range-doppler map&#10;(chirp duration × chirps per CPI)">coherent processing interval</span>:
+                        <span class="info-value" id="CPI-label"></span>
+                        ms
+                    </div>
+                    <div class="info-item">
+                        wavelength:
+                        <span class="info-value" id="wavelength-label"></span>
+                        cm
+                    </div>
+                    <div class="info-item">
+                        sampling rate:
+                        <span class="info-value" id="sample-rate-label"></span>
+                        Hz
+                    </div>
+                </div>
+                <div class="info-section">
+                    <h1>Advanced info</h1>
+                    <div class="info-item">
+                        time-bandwidth product:
+                        <span class="info-value" id="integration-gain-label"></span>
+                        dB
+                    </div>
+                    <div class="info-item">
+                        range migration over one CPI:
+                        <div class="info-multiple-values">
+                            <div class="multiple-values-option">
+                                1 R cell per
+                                <span class="info-value" id="max-migrationless-velocity-label"></span>
+                                cm/s
+                            </div>
+                            <div class="multiple-values-option">
+                                1 R cell per
+                                <span class="info-value" id="max-migrationless-velocity-cell-units-label"></span>
+                                V cells
+                            </div>
+                        </div>
+                    </div>
+                    <div class="info-item">range-velocity coupling:
+                        <div class="info-multiple-values">
+                            <div class="multiple-values-option">
+                                <span class="info-value" id="range-velocity-coupling-label"></span>
+                                cm per m/s
+                            </div>
+                            <div class="multiple-values-option">
+                                <span class="info-value" id="cell-unit-rv-coupling-label"></span>
+                                R cell per V cell
+                            </div>
+                        </div>
+                    </div>
+                    <div class="info-item">
+                        decimation:
+                        <span class="info-value" id="decimation-label"></span>
+                    </div>
+                </div>
+            <!-- </div> -->
+        </div>
+        <article class="description">
+            <h1>What is this?</h1>
+            An online demonstration of <a href="https://en.wikipedia.org/wiki/Pulse-Doppler_signal_processing">pulse-doppler radar</a>, using sound instead of radio waves.
+            <h1>How to use it?</h1>
+            <p>
+                Press the start button, and make sure that sound output is enabled on your computer. Don't use headphones.
+                By default, the sonar emits sound at near-ultrasound frequencies, so you may not hear anything, but you should see the 'peak input level' value increase.
+                You may have to adjust volume and microphone sensitivity to get good results.
+            </p>
+            <p>
+                The range-doppler plot has two axes: <a href="https://en.wikipedia.org/wiki/Bistatic_radar#Range">bistatic range</a> and bistatic velocity.
+                Bistatic range of a target is:
+            <p class="formula">(distance from the speaker to the target) + (distance from the target to the microphone) - (distance from the speaker to the microphone)</p>
+                Bistatic velocity is the rate of change of bistatic range.
+            </p>
+            <p>
+                The range-doppler plot shows the intensity of echo received for each combination of bistatic range and velocity.
+            </p>
+
+            <h1>Cool things to try</h1>
+            <ul>
+                <li>Move your hand around (not too fast) and see its echo appear.</li>
+                <li>Compare the sonar's performance for constant-velocity targets and <b>accelerating</b> targets (spoiler: it doesn't work well for accelerating ones)</li>
+                <li>Stand far away from the computer and move a flat object back and forth, facing the sonar.</li>
+                <li>See what happens when a target moves so fast that it crosses the top or bottom edge of the range-doppler map.</li>
+                <li>Move one hand forward towards the microphone, and the other hand backwards, and see if you can detect two echos at the same range, with different velocities.</li>
+                <li>If you're using a laptop, try connecting it to an <b>external speaker</b>. This way you should have more control over the direction of the transmitter beam. First experiment with the speaker and microphone pointing in the same direction.</li>
+                <li>Move away far enough that your echo will loop back to zero range on the range-doppler map.</li>
+                <li>Point the speaker at the ceiling or a wall and try to detect an indirect echo (one that bounces off the ceiling and then off a moving object).</li>
+                <li>Try using different objects as reflectors. Try to make a <a href="https://en.wikipedia.org/wiki/Corner_reflector">corner reflector</a>.</li>
+                <li>Make a small pendulum and see the echo that it generates when oscillating</li>
+                <li>Experiment with <b>bandwidth</b>. More bandwidth gives better range resolution.</li>
+                <li>Use the sonar in a big room or an <b>open space</b>. Compare with a small room. You should see fewer indirect echos in big rooms.</li>
+                <li>Disable clutter filtering and audio delay compensation, connect a small speaker (or headphones) to the computer, and observe the direct-path signal between the speaker and the microphone while moving the speaker around.</li>
+                <li>Set 'chirps per CPI' to 1 to effectively disable Doppler processing. The sonar now works in <a href="https://en.wikipedia.org/wiki/Moving_target_indication">Moving Target Indication (MTI)</a> mode. Use the two-pulse canceller for best results.</li>
+                <li>Try to find the best possible parameters for the sonar. In general, you won't be able to find a set of settings that is satisfactory in all aspects. It's always a matter of compromise between range ambiguity, velocity ambiguity, and length of the coherent processing interval.
+                </li>
+            </ul>
+
+            <h1>How does it work?</h1>
+            Soon there will be a blog post discussing this sonar in greater detail.
+            You can also read about pulse-doppler radar in books like as <cite>M. Richards, Fundamentals of Radar Signal Processing</cite>, or the classic <cite>M. Skolnik, Radar Handbook</cite> (and also <cite>Introduction to Radar Systems</cite> by the same author).
+            <figure>
+                <img src="sonar.svg"></object>
+                <figcaption>Block diagram of the sonar</figcaption>
+            </figure>
+        </article>
+        <!-- <script src="chart.js"></script> -->
+        <script src="javascript/sonar.js" type="module"></script>
+    </body>
+</html>
